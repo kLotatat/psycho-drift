@@ -9,38 +9,105 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ScienceRouteImport } from './routes/science'
+import { Route as ReflectRouteImport } from './routes/reflect'
+import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SessionEmotionRouteImport } from './routes/session.$emotion'
 
+const ScienceRoute = ScienceRouteImport.update({
+  id: '/science',
+  path: '/science',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReflectRoute = ReflectRouteImport.update({
+  id: '/reflect',
+  path: '/reflect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MemoryRoute = MemoryRouteImport.update({
+  id: '/memory',
+  path: '/memory',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SessionEmotionRoute = SessionEmotionRouteImport.update({
+  id: '/session/$emotion',
+  path: '/session/$emotion',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/memory': typeof MemoryRoute
+  '/reflect': typeof ReflectRoute
+  '/science': typeof ScienceRoute
+  '/session/$emotion': typeof SessionEmotionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/memory': typeof MemoryRoute
+  '/reflect': typeof ReflectRoute
+  '/science': typeof ScienceRoute
+  '/session/$emotion': typeof SessionEmotionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/memory': typeof MemoryRoute
+  '/reflect': typeof ReflectRoute
+  '/science': typeof ScienceRoute
+  '/session/$emotion': typeof SessionEmotionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/memory' | '/reflect' | '/science' | '/session/$emotion'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/memory' | '/reflect' | '/science' | '/session/$emotion'
+  id:
+    | '__root__'
+    | '/'
+    | '/memory'
+    | '/reflect'
+    | '/science'
+    | '/session/$emotion'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MemoryRoute: typeof MemoryRoute
+  ReflectRoute: typeof ReflectRoute
+  ScienceRoute: typeof ScienceRoute
+  SessionEmotionRoute: typeof SessionEmotionRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/science': {
+      id: '/science'
+      path: '/science'
+      fullPath: '/science'
+      preLoaderRoute: typeof ScienceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reflect': {
+      id: '/reflect'
+      path: '/reflect'
+      fullPath: '/reflect'
+      preLoaderRoute: typeof ReflectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/memory': {
+      id: '/memory'
+      path: '/memory'
+      fullPath: '/memory'
+      preLoaderRoute: typeof MemoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +115,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/session/$emotion': {
+      id: '/session/$emotion'
+      path: '/session/$emotion'
+      fullPath: '/session/$emotion'
+      preLoaderRoute: typeof SessionEmotionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MemoryRoute: MemoryRoute,
+  ReflectRoute: ReflectRoute,
+  ScienceRoute: ScienceRoute,
+  SessionEmotionRoute: SessionEmotionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
