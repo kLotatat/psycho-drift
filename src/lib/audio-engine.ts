@@ -263,6 +263,52 @@ class WavesEngine {
     }
     this.emit();
   }
+  // ——— Personal layers (user-uploaded sounds) ———
+  private layers = new Map<string, { src: AudioBufferSourceNode; gain: GainNode; pan: StereoPannerNode }>();
+
+  async addLayer(id: string, dataUrl: string, initialGain = 0.5) {
+    const ctx = this.ensureCtx();
+    if (this.layers.has(id)) return;
+    try {
+      const res = await fetch(dataUrl);
+      const arr = await res.arrayBuffer();
+      const buf = await ctx.decodeAudioData(arr.slice(0));
+      const src = ctx.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = 0;
+      src.connect(pan).connect(gain).connect(ctx.destination);
+      // crossfade in
+      gain.gain.linearRampToValueAtTime(initialGain, ctx.currentTime + 1.8);
+      src.start();
+      this.layers.set(id, { src, gain, pan });
+    } catch (e) {
+      console.warn("WAVES: failed to decode layer", id, e);
+    }
+  }
+
+  setLayerGain(id: string, v: number) {
+    const l = this.layers.get(id); if (!l || !this.ctx) return;
+    l.gain.gain.linearRampToValueAtTime(Math.max(0, Math.min(1, v)), this.ctx.currentTime + 0.4);
+  }
+
+  removeLayer(id: string) {
+    const l = this.layers.get(id); if (!l || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    l.gain.gain.cancelScheduledValues(t);
+    l.gain.gain.setValueAtTime(l.gain.gain.value, t);
+    l.gain.gain.linearRampToValueAtTime(0, t + 1.2);
+    setTimeout(() => {
+      try { l.src.stop(); } catch { /* */ }
+      try { l.src.disconnect(); l.gain.disconnect(); l.pan.disconnect(); } catch { /* */ }
+      this.layers.delete(id);
+    }, 1400);
+  }
+
+  hasLayer(id: string) { return this.layers.has(id); }
 }
 
 export const wavesEngine = new WavesEngine();
+

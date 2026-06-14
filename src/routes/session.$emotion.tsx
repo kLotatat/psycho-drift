@@ -3,14 +3,15 @@ import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { Atmosphere } from "@/components/Atmosphere";
 import { MODULES } from "@/lib/waves-data";
 import { wavesEngine } from "@/lib/audio-engine";
+import { loadLayers, type Layer } from "@/lib/memory-store";
 
 export const Route = createFileRoute("/session/$emotion")({
   head: ({ params }) => {
     const m = MODULES.find((x) => x.id === params.emotion);
     return {
       meta: [
-        { title: m ? `WAVES — ${m.name} session` : "WAVES — Session" },
-        { name: "description", content: m ? `${m.purpose}` : "An active WAVES session." },
+        { title: m ? `WAVES — ${m.humanName}` : "WAVES — Session" },
+        { name: "description", content: m ? m.purpose : "A WAVES session." },
       ],
     };
   },
@@ -43,7 +44,15 @@ function Session() {
   const [binaural, setBinaural] = useState(true);
   const [adaptive, setAdaptive] = useState(true);
   const [started, setStarted] = useState(false);
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const [activeLayerIds, setActiveLayerIds] = useState<Set<string>>(new Set());
   useEngine();
+
+  useEffect(() => {
+    // Relevant layers: tagged with this module's category id
+    const all = loadLayers().filter((l) => l.categories.includes(module.id));
+    setLayers(all);
+  }, [module.id]);
 
   const begin = async () => {
     wavesEngine.setIntensity(intensity / 100);
@@ -53,7 +62,11 @@ function Session() {
     setStarted(true);
   };
 
-  useEffect(() => () => { wavesEngine.stop(); }, []);
+  useEffect(() => () => {
+    activeLayerIds.forEach((id) => wavesEngine.removeLayer(id));
+    wavesEngine.stop();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { if (started) wavesEngine.setIntensity(intensity / 100); }, [intensity, started]);
   useEffect(() => { if (started) wavesEngine.setDepth(depth / 100); }, [depth, started]);
   useEffect(() => { if (started) wavesEngine.setBinaural(binaural); }, [binaural, started]);
@@ -63,6 +76,18 @@ function Session() {
     const id = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(id);
   }, [started]);
+
+  const toggleLayer = async (l: Layer) => {
+    if (activeLayerIds.has(l.id)) {
+      wavesEngine.removeLayer(l.id);
+      const next = new Set(activeLayerIds); next.delete(l.id);
+      setActiveLayerIds(next);
+    } else {
+      await wavesEngine.addLayer(l.id, l.dataUrl, 0.45);
+      const next = new Set(activeLayerIds); next.add(l.id);
+      setActiveLayerIds(next);
+    }
+  };
 
   const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
   const ss = String(seconds % 60).padStart(2, "0");
@@ -83,19 +108,19 @@ function Session() {
         <Link to="/" className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground hover:text-foreground transition">
           ← Exit
         </Link>
-        <div className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground">
-          <span className="text-foreground/90">{module.name}</span> · {module.freqLabel}
+        <div className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground text-center">
+          <span className="text-foreground/90">{module.humanName}</span> · {module.freqLabel}
         </div>
         <Link to="/reflect" className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground hover:text-foreground transition">
           End & Reflect →
         </Link>
       </header>
 
-      <section className="relative min-h-dvh flex flex-col items-center justify-center px-6">
+      <section className="relative min-h-dvh flex flex-col items-center justify-center px-6 pt-20 pb-48">
         <ReactiveSphere hue={hue} active={started} />
         <div className="mt-12 text-center">
-          <div className="text-[10px] uppercase tracking-[0.36em] text-foreground/60">{started ? "Resonating" : "Ready"}</div>
-          <div className="mt-3 font-display text-5xl sm:text-6xl text-foreground/95">{module.name}</div>
+          <div className="text-[10px] uppercase tracking-[0.36em] text-foreground/60">{started ? "In the space" : "Ready"}</div>
+          <div className="mt-3 font-display text-5xl sm:text-6xl text-foreground/95">{module.humanName}</div>
           <div className="mt-4 font-mono text-sm text-foreground/70">{mm}:{ss}</div>
           <p className="mt-8 max-w-md mx-auto text-sm text-muted-foreground leading-relaxed">{module.purpose}</p>
         </div>
@@ -103,8 +128,42 @@ function Session() {
         {!started && (
           <button onClick={begin}
             className="mt-12 glass rounded-full px-8 py-4 text-sm tracking-[0.22em] uppercase text-foreground/95 hover:bg-white/[0.06] transition">
-            Enter the field
+            Start listening
           </button>
+        )}
+
+        {started && layers.length > 0 && (
+          <div className="mt-14 w-full max-w-2xl">
+            <div className="text-center text-[10px] uppercase tracking-[0.32em] text-muted-foreground mb-4">
+              Personal Layers
+            </div>
+            <div className="glass rounded-3xl p-4 sm:p-5 space-y-2">
+              {layers.map((l) => {
+                const on = activeLayerIds.has(l.id);
+                return (
+                  <button key={l.id} onClick={() => toggleLayer(l)}
+                    className={`w-full flex items-center justify-between gap-4 rounded-2xl px-4 py-3 transition border ${
+                      on ? "bg-white/[0.06] border-white/20" : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04]"
+                    }`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`h-2 w-2 rounded-full ${on ? "bg-accent animate-breathe-soft" : "bg-muted-foreground/40"}`} />
+                      <span className="text-sm text-foreground/90 truncate">{l.name}</span>
+                    </div>
+                    <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">{on ? "Playing" : "Off"}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-3 text-center text-[10px] uppercase tracking-[0.24em] text-muted-foreground/70">
+              Layers blend in automatically · crossfaded · spatially placed
+            </div>
+          </div>
+        )}
+
+        {started && layers.length === 0 && (
+          <Link to="/memory" className="mt-10 text-[11px] uppercase tracking-[0.28em] text-muted-foreground hover:text-foreground transition">
+            + Add personal sounds to this space
+          </Link>
         )}
       </section>
 
@@ -126,24 +185,42 @@ function Session() {
 
 function ReactiveSphere({ hue, active }: { hue: number; active: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!active) return;
     let raf = 0;
     const analyser = wavesEngine.analyserNode;
     const data = analyser ? new Uint8Array(analyser.fftSize) : null;
+    const freqData = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
+    let smoothedAmp = 0;
+    let smoothedLow = 0;
+    let t0 = performance.now();
     const tick = () => {
-      let amp = 0;
-      if (analyser && data) {
+      let amp = 0, low = 0, high = 0;
+      if (analyser && data && freqData) {
         analyser.getByteTimeDomainData(data);
         let sum = 0;
         for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
         amp = Math.sqrt(sum / data.length);
+        analyser.getByteFrequencyData(freqData);
+        const mid = Math.floor(freqData.length / 3);
+        for (let i = 0; i < mid; i++) low += freqData[i];
+        for (let i = mid * 2; i < freqData.length; i++) high += freqData[i];
+        low /= mid * 255; high /= mid * 255;
       }
+      smoothedAmp = smoothedAmp * 0.85 + amp * 0.15;
+      smoothedLow = smoothedLow * 0.9 + low * 0.1;
+      const dt = (performance.now() - t0) / 1000;
+      const breathe = (Math.sin(dt * 0.6) + 1) / 2; // 0..1
       if (ref.current) {
-        const scale = 1 + amp * 0.35;
-        const glow = 120 + amp * 380;
+        const scale = 1 + smoothedAmp * 0.4 + breathe * 0.03;
+        const glow = 140 + smoothedAmp * 420 + smoothedLow * 80;
         ref.current.style.transform = `scale(${scale.toFixed(3)})`;
-        ref.current.style.boxShadow = `0 0 ${glow}px oklch(0.7 0.2 ${hue} / 0.55)`;
+        ref.current.style.boxShadow = `0 0 ${glow}px oklch(0.72 0.2 ${hue} / 0.55)`;
+      }
+      if (innerRef.current) {
+        const def = 1 + (high - low) * 0.06;
+        innerRef.current.style.transform = `scale(${def.toFixed(3)}) rotate(${(dt * 4) % 360}deg)`;
       }
       raf = requestAnimationFrame(tick);
     };
@@ -157,6 +234,11 @@ function ReactiveSphere({ hue, active }: { hue: number; active: boolean }) {
         style={{
           background: `radial-gradient(circle at 35% 30%, oklch(0.95 0.08 ${hue}), oklch(0.55 0.18 ${hue}) 60%, transparent 92%)`,
           filter: "blur(1px)",
+        }} />
+      <div ref={innerRef} className="absolute inset-[10%] rounded-full pointer-events-none transition-transform duration-200"
+        style={{
+          background: `radial-gradient(circle at 65% 70%, oklch(0.9 0.1 ${(hue + 40) % 360} / 0.35), transparent 60%)`,
+          filter: "blur(6px)",
         }} />
       {!active && <div className="absolute inset-0 rounded-full animate-breathe"
         style={{ background: `radial-gradient(circle, oklch(0.7 0.18 ${hue} / 0.35), transparent 70%)`, filter: "blur(40px)" }} />}
