@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 const links = [
-  { to: "/", label: "Atrium" },
+  { to: "/", label: "Home" },
   { to: "/memory", label: "Memory" },
   { to: "/science", label: "Science" },
   { to: "/reflect", label: "Reflect" },
@@ -34,7 +34,7 @@ export function Nav() {
         </nav>
         <div className="hidden md:flex items-center gap-3 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
           <span className="h-1.5 w-1.5 rounded-full bg-accent animate-breathe" />
-          Adaptive Intelligence
+          Sound Spaces
         </div>
       </div>
     </header>

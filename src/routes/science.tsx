@@ -6,10 +6,10 @@ import { SCIENCE } from "@/lib/waves-data";
 export const Route = createFileRoute("/science")({
   head: () => ({
     meta: [
-      { title: "WAVES — The Science Behind" },
-      { name: "description", content: "Psychoacoustics, neuroplasticity, polyvagal theory, and the architecture of emotional sound." },
-      { property: "og:title", content: "WAVES — The Science Behind" },
-      { property: "og:description", content: "Quiet research, plainly spoken." },
+      { title: "WAVES — How and Why It Works" },
+      { name: "description", content: "The short, plain-language version of the research behind WAVES." },
+      { property: "og:title", content: "WAVES — How and Why It Works" },
+      { property: "og:description", content: "Why sound can change how you feel." },
     ],
   }),
   component: Science,
@@ -21,39 +21,41 @@ function Science() {
       <Atmosphere />
       <Nav />
 
-      <section className="px-6 lg:px-10 pt-36 pb-20 max-w-7xl mx-auto">
+      <section className="px-6 lg:px-10 pt-36 pb-16 max-w-5xl mx-auto">
         <div className="max-w-3xl">
-          <div className="text-[11px] uppercase tracking-[0.32em] text-accent/80">The Science Behind WAVES</div>
+          <div className="text-[11px] uppercase tracking-[0.32em] text-accent/80">How and Why It Works</div>
           <h1 className="mt-5 font-display text-5xl sm:text-6xl leading-[1.04] text-foreground/95">
-            Sound is the oldest interface we have.
+            Sound changes how you feel.
           </h1>
           <p className="mt-6 text-muted-foreground leading-relaxed text-lg">
-            Before language, before image, the nervous system listened. WAVES is built on decades of
-            psychoacoustic and clinical research — distilled into environments simple enough to feel.
+            You already know this — a song can lift you, a room tone can calm you, a voice can hold you.
+            WAVES uses what researchers have learned about sound and the nervous system, and turns it into spaces you can step into.
           </p>
         </div>
       </section>
 
-      <section className="px-6 lg:px-10 pb-24 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/5 rounded-3xl overflow-hidden border border-white/5">
-          {SCIENCE.map((s, i) => (
-            <article key={s.id} className="bg-background/40 backdrop-blur p-10 hover:bg-white/[0.03] transition relative overflow-hidden">
-              <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full opacity-30 animate-breathe-soft"
-                style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--aurora) 60%, transparent), transparent 70%)", filter: "blur(30px)", animationDelay: `-${i}s` }} />
-              <div className="relative">
-                <div className="font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
-                  0{i + 1} · {s.title}
-                </div>
-                <p className="mt-6 font-display text-2xl text-foreground/95 leading-snug">{s.body}</p>
-                <DiagramPlaceholder seed={i} />
-              </div>
-            </article>
-          ))}
-        </div>
+      <section className="px-6 lg:px-10 pb-24 max-w-7xl mx-auto space-y-6">
+        {SCIENCE.map((s, i) => (
+          <article key={s.id}
+            className="glass rounded-3xl p-8 sm:p-12 grid grid-cols-1 md:grid-cols-12 gap-8 items-center relative overflow-hidden hover:bg-white/[0.04] transition">
+            <div aria-hidden className="absolute -top-32 -right-32 h-80 w-80 rounded-full opacity-30 animate-breathe-soft"
+              style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--aurora) 70%, transparent), transparent 70%)", filter: "blur(60px)", animationDelay: `-${i * 2}s` }} />
+            <div className="md:col-span-7 relative">
+              <div className="font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground">0{i + 1}</div>
+              <h2 className="mt-3 font-display text-6xl sm:text-7xl md:text-8xl text-foreground/95 leading-[0.95] uppercase tracking-tight">
+                {s.title}
+              </h2>
+            </div>
+            <div className="md:col-span-5 relative">
+              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">{s.body}</p>
+              <DiagramPlaceholder seed={i} />
+            </div>
+          </article>
+        ))}
 
-        <div className="mt-16 text-center">
+        <div className="pt-10 text-center">
           <Link to="/" className="inline-flex items-center gap-3 glass rounded-full px-6 py-3 text-sm hover:bg-white/5 transition">
-            Return to the constellation
+            Back to sound spaces
           </Link>
         </div>
       </section>
@@ -67,7 +69,7 @@ function DiagramPlaceholder({ seed }: { seed: number }) {
     return `${(i / 59) * 100},${y}`;
   });
   return (
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mt-8 w-full h-24 opacity-70">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mt-8 w-full h-16 opacity-70">
       <defs>
         <linearGradient id={`g${seed}`} x1="0" x2="1">
           <stop offset="0%" stopColor="oklch(0.72 0.13 220)" stopOpacity="0.1" />
