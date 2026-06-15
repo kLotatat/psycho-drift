@@ -3,6 +3,8 @@ import { Atmosphere } from "@/components/Atmosphere";
 import { Nav } from "@/components/Nav";
 import { Constellation } from "@/components/Constellation";
 import { HeadphoneModal } from "@/components/HeadphoneModal";
+import { AdaptiveIntelligence } from "@/components/AdaptiveIntelligence";
+
 import { MODULES, SCIENCE } from "@/lib/waves-data";
 
 export const Route = createFileRoute("/")({
