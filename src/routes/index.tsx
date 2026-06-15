@@ -25,6 +25,8 @@ function Index() {
       <Atmosphere />
       <Nav />
       <HeadphoneModal />
+      <AdaptiveIntelligence />
+
 
       {/* HERO */}
       <section className="relative min-h-dvh flex flex-col items-center justify-center px-6 pt-28 pb-16">
