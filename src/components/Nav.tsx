@@ -32,10 +32,8 @@ export function Nav() {
             </Link>
           ))}
         </nav>
-        <div className="hidden md:flex items-center gap-3 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent animate-breathe" />
-          Sound Spaces
-        </div>
+        <div aria-hidden className="hidden md:block w-[220px]" />
+
       </div>
     </header>
   );
