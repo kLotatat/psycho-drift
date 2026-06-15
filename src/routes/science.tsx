@@ -21,41 +21,43 @@ function Science() {
       <Atmosphere />
       <Nav />
 
-      <section className="px-6 lg:px-10 pt-36 pb-16 max-w-5xl mx-auto">
+      <section className="px-6 lg:px-10 pt-36 pb-16 max-w-4xl mx-auto">
         <div className="max-w-3xl">
-          <div className="text-[11px] uppercase tracking-[0.32em] text-accent/80">How and Why It Works</div>
-          <h1 className="mt-5 font-display text-5xl sm:text-6xl leading-[1.04] text-foreground/95">
-            Sound changes how you feel.
+          <div className="text-[11px] uppercase tracking-[0.32em] text-accent/80">The Science</div>
+          <h1 className="mt-5 font-display text-4xl sm:text-5xl leading-[1.06] text-foreground/95">
+            Sound is the oldest instrument we have for changing how we feel.
           </h1>
           <p className="mt-6 text-muted-foreground leading-relaxed text-lg">
-            You already know this — a song can lift you, a room tone can calm you, a voice can hold you.
-            WAVES uses what researchers have learned about sound and the nervous system, and turns it into spaces you can step into.
+            WAVES draws on psychoacoustics, neuroscience, and decades of research into how the auditory system
+            shapes attention, memory, and the autonomic body. What follows is the short, plain-language version —
+            a field guide to the ideas underneath the rooms.
           </p>
         </div>
       </section>
 
-      <section className="px-6 lg:px-10 pb-24 max-w-7xl mx-auto space-y-6">
-        {SCIENCE.map((s, i) => (
-          <article key={s.id}
-            className="glass rounded-3xl p-8 sm:p-12 grid grid-cols-1 md:grid-cols-12 gap-8 items-center relative overflow-hidden hover:bg-white/[0.04] transition">
-            <div aria-hidden className="absolute -top-32 -right-32 h-80 w-80 rounded-full opacity-30 animate-breathe-soft"
-              style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--aurora) 70%, transparent), transparent 70%)", filter: "blur(60px)", animationDelay: `-${i * 2}s` }} />
-            <div className="md:col-span-7 relative">
-              <div className="font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground">0{i + 1}</div>
-              <h2 className="mt-3 font-display text-6xl sm:text-7xl md:text-8xl text-foreground/95 leading-[0.95] uppercase tracking-tight">
-                {s.title}
-              </h2>
-            </div>
-            <div className="md:col-span-5 relative">
-              <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">{s.body}</p>
-              <DiagramPlaceholder seed={i} />
-            </div>
-          </article>
-        ))}
+      <section className="px-6 lg:px-10 pb-24 max-w-4xl mx-auto">
+        <ol className="divide-y divide-white/5 border-y border-white/5">
+          {SCIENCE.map((s, i) => (
+            <li key={s.id} className="grid grid-cols-12 gap-6 py-12 group">
+              <div className="col-span-12 sm:col-span-2 font-mono text-[10px] uppercase tracking-[0.32em] text-muted-foreground pt-2">
+                0{i + 1}
+              </div>
+              <div className="col-span-12 sm:col-span-4">
+                <h2 className="font-display text-2xl sm:text-3xl text-foreground/95 leading-tight">
+                  {s.title}
+                </h2>
+                <DiagramPlaceholder seed={i} />
+              </div>
+              <div className="col-span-12 sm:col-span-6">
+                <p className="text-base text-muted-foreground leading-relaxed">{s.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
 
-        <div className="pt-10 text-center">
+        <div className="pt-16 text-center">
           <Link to="/" className="inline-flex items-center gap-3 glass rounded-full px-6 py-3 text-sm hover:bg-white/5 transition">
-            Back to sound spaces
+            Return to the rooms
           </Link>
         </div>
       </section>
@@ -69,7 +71,7 @@ function DiagramPlaceholder({ seed }: { seed: number }) {
     return `${(i / 59) * 100},${y}`;
   });
   return (
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mt-8 w-full h-16 opacity-70">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mt-6 w-full h-12 opacity-60">
       <defs>
         <linearGradient id={`g${seed}`} x1="0" x2="1">
           <stop offset="0%" stopColor="oklch(0.72 0.13 220)" stopOpacity="0.1" />
