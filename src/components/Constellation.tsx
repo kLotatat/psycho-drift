@@ -4,7 +4,7 @@ import { EMOTIONS, type Emotion } from "@/lib/waves-data";
 
 /**
  * Sound Spaces — six living blobs orbiting a breathing core.
- * Organic asymmetric placement (not a clock face).
+ * Symmetrical orbital arrangement around a central listening environment.
  * Center reacts when you hover any node (magnetic / energy-transfer).
  */
 
