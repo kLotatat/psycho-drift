@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SystemRouteImport } from './routes/system'
 import { Route as ScienceRouteImport } from './routes/science'
 import { Route as ReflectRouteImport } from './routes/reflect'
 import { Route as MemoryRouteImport } from './routes/memory'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionEmotionRouteImport } from './routes/session.$emotion'
 
+const SystemRoute = SystemRouteImport.update({
+  id: '/system',
+  path: '/system',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScienceRoute = ScienceRouteImport.update({
   id: '/science',
   path: '/science',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/memory': typeof MemoryRoute
   '/reflect': typeof ReflectRoute
   '/science': typeof ScienceRoute
+  '/system': typeof SystemRoute
   '/session/$emotion': typeof SessionEmotionRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/memory': typeof MemoryRoute
   '/reflect': typeof ReflectRoute
   '/science': typeof ScienceRoute
+  '/system': typeof SystemRoute
   '/session/$emotion': typeof SessionEmotionRoute
 }
 export interface FileRoutesById {
@@ -61,19 +69,33 @@ export interface FileRoutesById {
   '/memory': typeof MemoryRoute
   '/reflect': typeof ReflectRoute
   '/science': typeof ScienceRoute
+  '/system': typeof SystemRoute
   '/session/$emotion': typeof SessionEmotionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/memory' | '/reflect' | '/science' | '/session/$emotion'
+  fullPaths:
+    | '/'
+    | '/memory'
+    | '/reflect'
+    | '/science'
+    | '/system'
+    | '/session/$emotion'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/memory' | '/reflect' | '/science' | '/session/$emotion'
+  to:
+    | '/'
+    | '/memory'
+    | '/reflect'
+    | '/science'
+    | '/system'
+    | '/session/$emotion'
   id:
     | '__root__'
     | '/'
     | '/memory'
     | '/reflect'
     | '/science'
+    | '/system'
     | '/session/$emotion'
   fileRoutesById: FileRoutesById
 }
@@ -82,11 +104,19 @@ export interface RootRouteChildren {
   MemoryRoute: typeof MemoryRoute
   ReflectRoute: typeof ReflectRoute
   ScienceRoute: typeof ScienceRoute
+  SystemRoute: typeof SystemRoute
   SessionEmotionRoute: typeof SessionEmotionRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/system': {
+      id: '/system'
+      path: '/system'
+      fullPath: '/system'
+      preLoaderRoute: typeof SystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/science': {
       id: '/science'
       path: '/science'
@@ -130,8 +160,19 @@ const rootRouteChildren: RootRouteChildren = {
   MemoryRoute: MemoryRoute,
   ReflectRoute: ReflectRoute,
   ScienceRoute: ScienceRoute,
+  SystemRoute: SystemRoute,
   SessionEmotionRoute: SessionEmotionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
