@@ -33,14 +33,12 @@ export function AdaptiveIntelligence() {
       onFocus={() => setOpen(true)}
       onBlur={() => setOpen(false)}
     >
-      {/* Capsule */}
+      {/* Capsule — quieter than nav, signature heartbeat */}
       <button
         type="button"
         aria-label={`Adaptive Intelligence · ${phase}`}
-        className="group relative flex items-center gap-2.5 rounded-full glass px-3.5 py-2 text-[10px] uppercase tracking-[0.28em] text-foreground/80 hover:text-foreground transition-colors"
-        style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 28px -16px rgba(0,0,0,0.6)" }}
+        className="group relative flex items-center gap-2 rounded-full glass-soft px-3 py-1.5 text-[10px] uppercase tracking-[0.32em] text-foreground/55 hover:text-foreground/90 transition-colors"
       >
-        {/* Heartbeat dot */}
         <span className="relative inline-flex h-1.5 w-1.5">
           <span
             className="absolute inset-0 rounded-full animate-breathe-soft"
@@ -52,8 +50,8 @@ export function AdaptiveIntelligence() {
           />
         </span>
         <span className="hidden sm:inline">Adaptive Intelligence</span>
-        <span className="hidden sm:inline text-foreground/40">·</span>
-        <span className="text-foreground/60">{phase}</span>
+        <span className="hidden sm:inline text-foreground/30">·</span>
+        <span className="text-foreground/45">{phase}</span>
       </button>
 
       {/* Expanded panel */}

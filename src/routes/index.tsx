@@ -28,28 +28,30 @@ function Index() {
       <AdaptiveIntelligence />
 
 
-      {/* HERO */}
-      <section className="relative min-h-dvh flex flex-col items-center justify-center px-6 pt-28 pb-16">
+      {/* HERO — settled lower, generous breathing room */}
+      <section className="relative min-h-dvh flex flex-col items-center justify-center px-6 pt-40 pb-24">
         <div className="text-center max-w-3xl animate-rise">
-          <div className="text-[11px] uppercase tracking-[0.36em] text-muted-foreground">
-            WAVES · An Adaptive Psychoacoustic Instrument
+          <div className="text-[10px] uppercase tracking-[0.42em] text-muted-foreground/80">
+            An Adaptive Psychoacoustic Instrument
           </div>
-          <h1 className="mt-8 font-display text-5xl sm:text-6xl md:text-7xl leading-[1.04] text-foreground/95">
-            What do you need<br /><em className="not-italic text-foreground/70">right now?</em>
+          <h1 className="mt-12 font-display text-5xl sm:text-6xl md:text-7xl leading-[1.02] text-foreground/95">
+            What do you need
+            <br />
+            <em className="not-italic text-foreground/55">right now?</em>
           </h1>
-          <p className="mt-6 text-base text-muted-foreground max-w-xl mx-auto leading-relaxed">
+          <p className="mt-8 text-[15px] text-muted-foreground/90 max-w-xl mx-auto leading-relaxed tracking-wide">
             Choose a space. Begin listening.
           </p>
         </div>
 
-        <div className="mt-10 w-full animate-rise" style={{ animationDelay: "200ms" }}>
+        <div className="mt-20 w-full animate-rise" style={{ animationDelay: "240ms" }}>
           <Constellation />
         </div>
 
-        <div className="mt-10 flex items-center gap-6 text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
-          <span className="inline-flex items-center gap-2"><Dot /> Spatial</span>
-          <span className="hidden sm:inline-flex items-center gap-2"><Dot /> Binaural</span>
-          <span className="hidden md:inline-flex items-center gap-2"><Dot /> Adaptive</span>
+        <div className="mt-20 flex items-center gap-10 text-[10px] uppercase tracking-[0.36em] text-muted-foreground/70">
+          <span className="inline-flex items-center gap-2.5"><Dot /> Spatial</span>
+          <span className="hidden sm:inline-flex items-center gap-2.5"><Dot /> Binaural</span>
+          <span className="hidden md:inline-flex items-center gap-2.5"><Dot /> Adaptive</span>
         </div>
       </section>
 
