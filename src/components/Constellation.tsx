@@ -4,19 +4,20 @@ import { EMOTIONS, type Emotion } from "@/lib/waves-data";
 
 /**
  * Sound Spaces — six living blobs orbiting a breathing core.
- * Organic asymmetric placement (not a clock face).
+ * Symmetrical orbital arrangement around a central listening environment.
  * Center reacts when you hover any node (magnetic / energy-transfer).
  */
 
-// Hand-tuned asymmetric positions (percent). Feels like celestial objects
-// held in equilibrium rather than spokes on a wheel.
+// Symmetrical orbital positions (percent).
+// Six emotional spaces evenly distributed around a central listening environment.
+// The composition communicates balance, resonance, and emotional equilibrium.
 const POSITIONS: Array<{ x: number; y: number; scale: number }> = [
-  { x: 18, y: 26, scale: 1.05 }, // FOCUS
-  { x: 78, y: 22, scale: 0.95 }, // GROUND
-  { x: 88, y: 60, scale: 1.0 },  // FLOAT
-  { x: 64, y: 86, scale: 1.1 },  // RELEASE
-  { x: 22, y: 78, scale: 0.92 }, // NEST
-  { x: 8,  y: 52, scale: 1.0 },  // RECALL
+  { x: 50, y: 14, scale: 1.05 }, // FOCUS — Top Center
+  { x: 82, y: 32, scale: 0.95 }, // GROUND — Upper Right
+  { x: 82, y: 68, scale: 1.0 },  // FLOAT — Lower Right
+  { x: 50, y: 86, scale: 1.1 },  // RELEASE — Bottom Center
+  { x: 18, y: 68, scale: 0.92 }, // NEST — Lower Left
+  { x: 18, y: 32, scale: 1.0 },  // RECALL — Upper Left
 ];
 
 export function Constellation() {
