@@ -25,7 +25,7 @@ export function Constellation() {
   const active = EMOTIONS.find((e) => e.id === hover);
 
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[820px]">
+    <div className="relative mx-auto aspect-square w-full max-w-[min(820px,92vw)]">
       {/* faint orbital rings */}
       <div aria-hidden className="absolute inset-0 rounded-full border border-white/[0.04] animate-orbit-slow" />
       <div aria-hidden className="absolute inset-[12%] rounded-full border border-white/[0.035]" />
@@ -34,7 +34,7 @@ export function Constellation() {
       {/* CENTER — emotional heart */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <div
-          className={`relative h-64 w-64 sm:h-72 sm:w-72 transition-transform duration-[1200ms] ease-out ${
+          className={`relative h-44 w-44 sm:h-64 sm:w-64 md:h-72 md:w-72 transition-transform duration-[1200ms] ease-out ${
             active ? "scale-[1.08]" : "scale-100"
           }`}
         >
@@ -165,12 +165,12 @@ function Node({
             filter: "blur(24px)",
           }}
         />
-        {/* blob */}
+        {/* blob — scales down on small screens for touch comfort */}
         <div
           className="relative rounded-full animate-breathe-soft"
           style={{
-            width: `${64 * scale}px`,
-            height: `${64 * scale}px`,
+            width: `clamp(${44 * scale}px, ${7 * scale}vw, ${64 * scale}px)`,
+            height: `clamp(${44 * scale}px, ${7 * scale}vw, ${64 * scale}px)`,
             background: `radial-gradient(circle at 30% 26%, oklch(0.96 0.08 ${e.hue}), oklch(0.55 0.18 ${e.hue}) 62%, oklch(0.28 0.10 ${e.hue}) 100%)`,
             boxShadow: `0 0 ${active ? 80 : 32}px oklch(0.7 0.22 ${e.hue} / ${active ? 0.9 : 0.5}), inset 0 0 16px color-mix(in oklab, white 38%, transparent)`,
             animationDelay: `-${i * 1.6}s`,

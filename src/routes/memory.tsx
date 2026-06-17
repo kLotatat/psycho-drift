@@ -148,8 +148,22 @@ function Memory() {
 
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {visible.length === 0 && (
-            <div className="col-span-full glass rounded-3xl p-12 text-center text-muted-foreground text-sm">
-              No sounds here yet. Upload one above — it'll appear inside your sessions as a personal layer.
+            <div className="col-span-full glass rounded-3xl p-12 sm:p-16 text-center relative overflow-hidden">
+              <div className="absolute inset-0 opacity-30 pointer-events-none animate-breathe-soft"
+                style={{ background: "radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--aurora) 40%, transparent), transparent 70%)", filter: "blur(40px)" }} />
+              <div className="relative">
+                <div className="mx-auto h-16 w-16 rounded-full animate-breathe"
+                  style={{ background: "radial-gradient(circle, color-mix(in oklab, var(--aurora) 50%, transparent), transparent 70%)", filter: "blur(8px)" }} />
+                <div className="mt-6 text-[10px] uppercase tracking-[0.36em] text-accent/80">Empty</div>
+                <h3 className="mt-3 font-display text-3xl text-foreground/95">
+                  {filter === "all" ? "A library, waiting." : "Nothing here in this feeling."}
+                </h3>
+                <p className="mt-4 max-w-md mx-auto text-sm text-muted-foreground leading-relaxed">
+                  {filter === "all"
+                    ? "Bring in the first sound that means something to you. It will fold into the rooms you enter."
+                    : "Upload a sound and tag it with this feeling — it'll appear inside the matching room."}
+                </p>
+              </div>
             </div>
           )}
           {visible.map((l) => (
