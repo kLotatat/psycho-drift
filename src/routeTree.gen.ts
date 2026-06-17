@@ -13,6 +13,7 @@ import { Route as SystemRouteImport } from './routes/system'
 import { Route as ScienceRouteImport } from './routes/science'
 import { Route as ReflectRouteImport } from './routes/reflect'
 import { Route as MemoryRouteImport } from './routes/memory'
+import { Route as CaseStudyRouteImport } from './routes/case-study'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionEmotionRouteImport } from './routes/session.$emotion'
 
@@ -36,6 +37,11 @@ const MemoryRoute = MemoryRouteImport.update({
   path: '/memory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CaseStudyRoute = CaseStudyRouteImport.update({
+  id: '/case-study',
+  path: '/case-study',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -49,6 +55,7 @@ const SessionEmotionRoute = SessionEmotionRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/case-study': typeof CaseStudyRoute
   '/memory': typeof MemoryRoute
   '/reflect': typeof ReflectRoute
   '/science': typeof ScienceRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/case-study': typeof CaseStudyRoute
   '/memory': typeof MemoryRoute
   '/reflect': typeof ReflectRoute
   '/science': typeof ScienceRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/case-study': typeof CaseStudyRoute
   '/memory': typeof MemoryRoute
   '/reflect': typeof ReflectRoute
   '/science': typeof ScienceRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/case-study'
     | '/memory'
     | '/reflect'
     | '/science'
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/case-study'
     | '/memory'
     | '/reflect'
     | '/science'
@@ -92,6 +103,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/case-study'
     | '/memory'
     | '/reflect'
     | '/science'
@@ -101,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CaseStudyRoute: typeof CaseStudyRoute
   MemoryRoute: typeof MemoryRoute
   ReflectRoute: typeof ReflectRoute
   ScienceRoute: typeof ScienceRoute
@@ -138,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/case-study': {
+      id: '/case-study'
+      path: '/case-study'
+      fullPath: '/case-study'
+      preLoaderRoute: typeof CaseStudyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -157,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CaseStudyRoute: CaseStudyRoute,
   MemoryRoute: MemoryRoute,
   ReflectRoute: ReflectRoute,
   ScienceRoute: ScienceRoute,

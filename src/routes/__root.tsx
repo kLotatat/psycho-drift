@@ -76,7 +76,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#0B0D12" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "WAVES" },
+      { name: "mobile-web-app-capable", content: "yes" },
       { title: "WAVES — Waveform Activated Vestibular Emotional System" },
       { name: "description", content: "An emotional operating system. A neuroscience-informed psychoacoustic environment for navigating attention, memory, and feeling through sound." },
       { name: "author", content: "WAVES" },

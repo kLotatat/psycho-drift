@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Atmosphere } from "@/components/Atmosphere";
 import { Nav } from "@/components/Nav";
 import { Constellation } from "@/components/Constellation";
-import { HeadphoneModal } from "@/components/HeadphoneModal";
+import { Onboarding } from "@/components/Onboarding";
 import { AdaptiveIntelligence } from "@/components/AdaptiveIntelligence";
 
 import { MODULES, SCIENCE } from "@/lib/waves-data";
@@ -24,7 +24,7 @@ function Index() {
     <main className="relative min-h-dvh text-foreground">
       <Atmosphere />
       <Nav />
-      <HeadphoneModal />
+      <Onboarding />
       <AdaptiveIntelligence />
 
 

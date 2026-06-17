@@ -27,7 +27,8 @@ export function AdaptiveIntelligence() {
 
   return (
     <div
-      className="fixed top-5 right-5 z-40 select-none"
+      className="fixed right-5 z-30 select-none hidden md:block"
+      style={{ top: "calc(env(safe-area-inset-top, 0px) + 22px)" }}
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
