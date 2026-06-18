@@ -1,12 +1,17 @@
 /**
  * WAVES Audio Engine — procedural psychoacoustic synthesis.
- * No samples. Generated entirely with the Web Audio API:
- *   - dual-oscillator binaural beat carrier (L / R)
- *   - harmonic pad (sine + detuned saw, filtered)
- *   - filtered pink-ish noise bed (vestibular air)
- *   - slow LFO breathing the lowpass + master amplitude
- *   - convolution reverb from a procedurally generated impulse
- * Designed to begin producing sound within 200ms of resume().
+ *
+ * Production refinement pass:
+ *   - Per-module "chain" objects with seamless crossfade between modules
+ *   - Master soft-limiter (DynamicsCompressor) for safe-listening ceiling
+ *   - Sub-bass body oscillator (carrier / 2) for vestibular weight
+ *   - Haas-delay stereo widening on the harmonic pad
+ *   - Slow vibrato + drift on pad voices ("living" detune)
+ *   - High-shelf shimmer noise bed for air
+ *   - Personal layers routed through the active chain's reverb bus
+ *
+ * Public API preserved: start, stop, setIntensity, setDepth, setBinaural,
+ * addLayer, setLayerGain, removeLayer, hasLayer, subscribe, getters.
  */
 
 import type { Module } from "./waves-data";
@@ -22,32 +27,40 @@ interface Preset {
   harmonics: number[];   // multipliers over carrier
   reverb: number;        // 0..1 wet
   pulseRate?: number;    // Hz — isochronic amplitude pulse
+  sub?: number;          // 0..1 sub-bass body gain
+  shimmer?: number;      // 0..1 high-shelf air gain
 }
 
 const PRESETS: Record<ModuleId, Preset> = {
-  focus:   { carrier: 220, binaural: 14.0, filter: 2200, q: 0.7, noise: 0.05, harmonics: [1.5, 2, 3],     reverb: 0.22, pulseRate: 14 },
-  ground:  { carrier: 65,  binaural: 4.0,  filter: 420,  q: 0.6, noise: 0.10, harmonics: [2, 3],          reverb: 0.55 },
-  float:   { carrier: 174, binaural: 6.0,  filter: 1400, q: 0.5, noise: 0.10, harmonics: [1.5, 2, 3, 4],  reverb: 0.85 },
-  release: { carrier: 136, binaural: 4.5,  filter: 900,  q: 0.8, noise: 0.06, harmonics: [2, 2.5, 3],     reverb: 0.70 },
-  nest:    { carrier: 110, binaural: 7.83, filter: 700,  q: 0.7, noise: 0.05, harmonics: [2, 3, 4],       reverb: 0.45 },
-  recall:  { carrier: 192, binaural: 6.0,  filter: 1100, q: 0.9, noise: 0.06, harmonics: [1.5, 2, 2.5],   reverb: 0.60 },
+  focus:   { carrier: 220, binaural: 14.0, filter: 2200, q: 0.7, noise: 0.05, harmonics: [1.5, 2, 3],     reverb: 0.22, pulseRate: 14, sub: 0.05, shimmer: 0.12 },
+  ground:  { carrier: 65,  binaural: 4.0,  filter: 420,  q: 0.6, noise: 0.10, harmonics: [2, 3],          reverb: 0.55,                sub: 0.35, shimmer: 0.04 },
+  float:   { carrier: 174, binaural: 6.0,  filter: 1400, q: 0.5, noise: 0.10, harmonics: [1.5, 2, 3, 4],  reverb: 0.85,                sub: 0.10, shimmer: 0.18 },
+  release: { carrier: 136, binaural: 4.5,  filter: 900,  q: 0.8, noise: 0.06, harmonics: [2, 2.5, 3],     reverb: 0.70,                sub: 0.18, shimmer: 0.10 },
+  nest:    { carrier: 110, binaural: 7.83, filter: 700,  q: 0.7, noise: 0.05, harmonics: [2, 3, 4],       reverb: 0.45,                sub: 0.22, shimmer: 0.06 },
+  recall:  { carrier: 192, binaural: 6.0,  filter: 1100, q: 0.9, noise: 0.06, harmonics: [1.5, 2, 2.5],   reverb: 0.60,                sub: 0.14, shimmer: 0.10 },
 };
+
+interface Chain {
+  module: ModuleId;
+  master: GainNode;
+  wet: GainNode;
+  convolver: ConvolverNode;
+  reverbInput: GainNode;
+  nodes: AudioNode[];
+}
 
 class WavesEngine {
   private ctx: AudioContext | null = null;
-  private master: GainNode | null = null;
-  private wet: GainNode | null = null;
-  private dry: GainNode | null = null;
-  private nodes: AudioNode[] = [];
+  private limiter: DynamicsCompressorNode | null = null;
   private analyser: AnalyserNode | null = null;
-  private currentModule: ModuleId | null = null;
-  private intensity = 0.5;   // 0..1
-  private depth = 0.6;       // spatial depth 0..1
+  private chain: Chain | null = null;
+  private intensity = 0.5;
+  private depth = 0.6;
   private binauralOn = true;
   private listeners = new Set<() => void>();
 
-  get isRunning() { return this.ctx?.state === "running" && !!this.currentModule; }
-  get module() { return this.currentModule; }
+  get isRunning() { return this.ctx?.state === "running" && !!this.chain; }
+  get module() { return this.chain?.module ?? null; }
   get level() { return this.intensity; }
   get spatial() { return this.depth; }
   get binaural() { return this.binauralOn; }
@@ -60,11 +73,26 @@ class WavesEngine {
     if (!this.ctx) {
       const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new Ctx();
+      // Master safe-listening chain: limiter -> analyser -> destination
+      const limiter = this.ctx.createDynamicsCompressor();
+      limiter.threshold.value = -8;
+      limiter.knee.value = 6;
+      limiter.ratio.value = 12;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.18;
+      const analyser = this.ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.85;
+      limiter.connect(analyser).connect(this.ctx.destination);
+      // Also send limiter directly to destination (analyser is a tap)
+      limiter.connect(this.ctx.destination);
+      this.limiter = limiter;
+      this.analyser = analyser;
     }
     return this.ctx;
   }
 
-  private buildReverbIR(seconds = 3.2, decay = 2.4): AudioBuffer {
+  private buildReverbIR(seconds = 3.6, decay = 2.6): AudioBuffer {
     const ctx = this.ensureCtx();
     const rate = ctx.sampleRate;
     const len = Math.floor(seconds * rate);
@@ -72,13 +100,14 @@ class WavesEngine {
     for (let ch = 0; ch < 2; ch++) {
       const data = buf.getChannelData(ch);
       for (let i = 0; i < len; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+        // gentle early-reflection shaping
+        const env = Math.pow(1 - i / len, decay);
+        data[i] = (Math.random() * 2 - 1) * env;
       }
     }
     return buf;
   }
 
-  /** Pink-ish noise via a single biquad on white noise. */
   private buildNoiseBuffer(seconds = 6): AudioBuffer {
     const ctx = this.ensureCtx();
     const rate = ctx.sampleRate;
@@ -99,58 +128,56 @@ class WavesEngine {
   async start(module: ModuleId) {
     const ctx = this.ensureCtx();
     if (ctx.state === "suspended") await ctx.resume();
-    if (this.currentModule === module && this.isRunning) return;
-    if (this.currentModule) this.stopVoices(0.6);
-    this.currentModule = module;
-    this.spinUp(module);
+    if (this.chain?.module === module) return;
+    const previous = this.chain;
+    const next = this.spinUp(module);
+    this.chain = next;
+    // Crossfade — new chain ramps up while old fades out
+    if (previous) this.destroyChain(previous, 1.6);
     this.emit();
   }
 
-  private spinUp(module: ModuleId) {
+  private spinUp(module: ModuleId): Chain {
     const ctx = this.ensureCtx();
+    const limiter = this.limiter!;
     const p = PRESETS[module];
     const now = ctx.currentTime;
+    const nodes: AudioNode[] = [];
 
-    // Master chain
+    // Per-chain master + reverb send
     const master = ctx.createGain();
     master.gain.setValueAtTime(0, now);
-    master.gain.linearRampToValueAtTime(this.intensity * 0.6, now + 1.5);
-    master.connect(ctx.destination);
+    master.gain.linearRampToValueAtTime(this.intensity * 0.55, now + 1.8);
+    master.connect(limiter);
 
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 1024;
-    analyser.smoothingTimeConstant = 0.85;
-    master.connect(analyser);
-    this.analyser = analyser;
-
-    // Reverb send/return
     const convolver = ctx.createConvolver();
     convolver.buffer = this.buildReverbIR();
     const wet = ctx.createGain();
     const dry = ctx.createGain();
+    const reverbInput = ctx.createGain();
     wet.gain.value = p.reverb * this.depth;
     dry.gain.value = 1 - 0.3 * p.reverb;
-    convolver.connect(wet).connect(master);
+    reverbInput.connect(convolver).connect(wet).connect(master);
     dry.connect(master);
 
-    // Shared lowpass with slow LFO (breathing)
+    // Lowpass with slow LFO breath
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
     lp.frequency.value = p.filter;
     lp.Q.value = p.q;
     lp.connect(dry);
-    lp.connect(convolver);
+    lp.connect(reverbInput);
 
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.frequency.value = 0.08;          // ~12s breath cycle
-    lfoGain.gain.value = p.filter * 0.35;
-    lfo.connect(lfoGain).connect(lp.frequency);
-    lfo.start();
+    const breath = ctx.createOscillator();
+    const breathGain = ctx.createGain();
+    breath.frequency.value = 0.08;
+    breathGain.gain.value = p.filter * 0.32;
+    breath.connect(breathGain).connect(lp.frequency);
+    breath.start();
 
-    // Binaural carrier — split L/R via StereoPanner
+    // Binaural carrier — L/R sines
     const carrierGain = ctx.createGain();
-    carrierGain.gain.value = 0.18;
+    carrierGain.gain.value = 0.16;
     carrierGain.connect(lp);
 
     const oscL = ctx.createOscillator();
@@ -164,28 +191,65 @@ class WavesEngine {
     oscR.connect(panR).connect(carrierGain);
     oscL.start(); oscR.start();
 
-    // Harmonic pad — slightly detuned, slow attack
+    // Sub-bass body — carrier / 2, lowpassed deeper
+    if (p.sub && p.sub > 0) {
+      const subOsc = ctx.createOscillator();
+      subOsc.type = "sine";
+      subOsc.frequency.value = p.carrier * 0.5;
+      const subLp = ctx.createBiquadFilter();
+      subLp.type = "lowpass"; subLp.frequency.value = 180; subLp.Q.value = 0.5;
+      const subGain = ctx.createGain();
+      subGain.gain.value = 0;
+      subGain.gain.linearRampToValueAtTime(p.sub * 0.5, now + 4);
+      subOsc.connect(subLp).connect(subGain).connect(master); // bypass reverb — keep low end clean
+      subOsc.start();
+      nodes.push(subOsc, subLp, subGain);
+    }
+
+    // Harmonic pad with Haas widening + slow vibrato
     const padBus = ctx.createGain();
     padBus.gain.value = 0;
-    padBus.gain.linearRampToValueAtTime(0.16, ctx.currentTime + 3);
+    padBus.gain.linearRampToValueAtTime(0.14, now + 3.5);
     padBus.connect(lp);
+
+    const vibrato = ctx.createOscillator();
+    const vibratoGain = ctx.createGain();
+    vibrato.frequency.value = 0.15;
+    vibratoGain.gain.value = 3.5; // cents of drift
+    vibrato.connect(vibratoGain);
+    vibrato.start();
 
     const padOscs: OscillatorNode[] = [];
     p.harmonics.forEach((mult, i) => {
       const o = ctx.createOscillator();
       o.type = i % 2 === 0 ? "sine" : "triangle";
       o.frequency.value = p.carrier * mult;
-      o.detune.value = (Math.random() - 0.5) * 14;
+      o.detune.value = (Math.random() - 0.5) * 12;
+      vibratoGain.connect(o.detune);
+
       const g = ctx.createGain();
       g.gain.value = 0.5 / (i + 1);
       const pan = ctx.createStereoPanner();
-      pan.pan.value = ((i % 2) * 2 - 1) * 0.6 * this.depth;
-      o.connect(g).connect(pan).connect(padBus);
+      const side = ((i % 2) * 2 - 1) * 0.55 * this.depth;
+      pan.pan.value = side;
+
+      // Haas micro-delay on the opposite side for stereo width
+      const delay = ctx.createDelay(0.05);
+      delay.delayTime.value = 0.012 + (i * 0.004);
+      const wetSide = ctx.createGain();
+      wetSide.gain.value = 0.35 * this.depth;
+      const wetPan = ctx.createStereoPanner();
+      wetPan.pan.value = -side;
+
+      o.connect(g);
+      g.connect(pan).connect(padBus);
+      g.connect(delay).connect(wetSide).connect(wetPan).connect(padBus);
       o.start();
       padOscs.push(o);
+      nodes.push(g, pan, delay, wetSide, wetPan);
     });
 
-    // Filtered noise air bed
+    // Pink noise air bed (bandpassed)
     const noiseSrc = ctx.createBufferSource();
     noiseSrc.buffer = this.buildNoiseBuffer();
     noiseSrc.loop = true;
@@ -198,71 +262,92 @@ class WavesEngine {
     noiseSrc.connect(noiseBp).connect(noiseGain).connect(lp);
     noiseSrc.start();
 
-    // Optional isochronic pulse on the carrier
+    // High-shelf shimmer
+    if (p.shimmer && p.shimmer > 0) {
+      const shimmer = ctx.createBufferSource();
+      shimmer.buffer = this.buildNoiseBuffer(4);
+      shimmer.loop = true;
+      const hp = ctx.createBiquadFilter();
+      hp.type = "highpass"; hp.frequency.value = 4200; hp.Q.value = 0.3;
+      const sg = ctx.createGain();
+      sg.gain.value = 0;
+      sg.gain.linearRampToValueAtTime(p.shimmer * 0.08, now + 5);
+      shimmer.connect(hp).connect(sg).connect(reverbInput); // shimmer lives in the reverb tail
+      shimmer.start();
+      nodes.push(shimmer, hp, sg);
+    }
+
+    // Optional isochronic pulse on carrier
     if (p.pulseRate) {
       const pulseLfo = ctx.createOscillator();
       const pulseDepth = ctx.createGain();
       pulseLfo.frequency.value = p.pulseRate;
-      pulseDepth.gain.value = 0.06;
+      pulseDepth.gain.value = 0.05;
       pulseLfo.connect(pulseDepth).connect(carrierGain.gain);
       pulseLfo.start();
-      this.nodes.push(pulseLfo);
+      nodes.push(pulseLfo, pulseDepth);
     }
 
-    this.master = master; this.wet = wet; this.dry = dry;
-    this.nodes.push(lfo, oscL, oscR, noiseSrc, ...padOscs, lp, convolver, wet, dry, carrierGain, padBus, noiseGain, noiseBp, master);
+    nodes.push(breath, breathGain, oscL, oscR, panL, panR, carrierGain,
+               vibrato, vibratoGain, ...padOscs, padBus, noiseSrc, noiseBp, noiseGain,
+               lp, convolver, wet, dry, reverbInput, master);
+
+    return { module, master, wet, convolver, reverbInput, nodes };
   }
 
-  private stopVoices(fadeSec = 0.5) {
-    const ctx = this.ctx; if (!ctx || !this.master) return;
+  private destroyChain(chain: Chain, fadeSec = 0.8) {
+    const ctx = this.ctx; if (!ctx) return;
     const t = ctx.currentTime;
-    this.master.gain.cancelScheduledValues(t);
-    this.master.gain.setValueAtTime(this.master.gain.value, t);
-    this.master.gain.linearRampToValueAtTime(0, t + fadeSec);
-    const toKill = this.nodes;
-    this.nodes = [];
+    chain.master.gain.cancelScheduledValues(t);
+    chain.master.gain.setValueAtTime(chain.master.gain.value, t);
+    chain.master.gain.linearRampToValueAtTime(0, t + fadeSec);
+    // Detach personal layers tied to this chain (they were routed via reverbInput)
     setTimeout(() => {
-      toKill.forEach((n) => {
+      chain.nodes.forEach((n) => {
         try { (n as OscillatorNode).stop?.(); } catch { /* not a source */ }
         try { n.disconnect(); } catch { /* already disconnected */ }
       });
-    }, fadeSec * 1000 + 60);
-    this.master = null; this.wet = null; this.dry = null; this.analyser = null;
+    }, fadeSec * 1000 + 80);
   }
 
   async stop() {
-    this.stopVoices(0.8);
-    this.currentModule = null;
+    if (this.chain) this.destroyChain(this.chain, 1.0);
+    this.chain = null;
+    // Tear down all personal layers
+    this.layers.forEach((_, id) => this.removeLayer(id));
     this.emit();
   }
 
   setIntensity(v: number) {
     this.intensity = Math.max(0, Math.min(1, v));
-    if (this.master && this.ctx) {
-      this.master.gain.linearRampToValueAtTime(this.intensity * 0.6, this.ctx.currentTime + 0.4);
+    if (this.chain && this.ctx) {
+      this.chain.master.gain.linearRampToValueAtTime(this.intensity * 0.55, this.ctx.currentTime + 0.4);
     }
     this.emit();
   }
 
   setDepth(v: number) {
     this.depth = Math.max(0, Math.min(1, v));
-    if (this.wet && this.ctx && this.currentModule) {
-      const p = PRESETS[this.currentModule];
-      this.wet.gain.linearRampToValueAtTime(p.reverb * this.depth, this.ctx.currentTime + 0.6);
+    if (this.chain && this.ctx) {
+      const p = PRESETS[this.chain.module];
+      this.chain.wet.gain.linearRampToValueAtTime(p.reverb * this.depth, this.ctx.currentTime + 0.6);
     }
     this.emit();
   }
 
   setBinaural(on: boolean) {
+    if (this.binauralOn === on) return;
     this.binauralOn = on;
-    // Rebuild silently if running — cheapest path
-    if (this.currentModule) {
-      const m = this.currentModule;
-      this.stopVoices(0.4);
-      setTimeout(() => this.spinUp(m), 80);
+    if (this.chain) {
+      // Seamless rebuild via crossfade
+      const m = this.chain.module;
+      const prev = this.chain;
+      this.chain = this.spinUp(m);
+      this.destroyChain(prev, 1.2);
     }
     this.emit();
   }
+
   // ——— Personal layers (user-uploaded sounds) ———
   private layers = new Map<string, { src: AudioBufferSourceNode; gain: GainNode; pan: StereoPannerNode }>();
 
@@ -279,9 +364,10 @@ class WavesEngine {
       gain.gain.value = 0;
       const pan = ctx.createStereoPanner();
       pan.pan.value = 0;
-      src.connect(pan).connect(gain).connect(ctx.destination);
-      // crossfade in
-      gain.gain.linearRampToValueAtTime(initialGain, ctx.currentTime + 1.8);
+      // Route layers through the chain's reverb when available, else dry to limiter
+      const destination: AudioNode = this.chain?.reverbInput ?? this.limiter ?? ctx.destination;
+      src.connect(pan).connect(gain).connect(destination);
+      gain.gain.linearRampToValueAtTime(initialGain, ctx.currentTime + 2.0);
       src.start();
       this.layers.set(id, { src, gain, pan });
     } catch (e) {
@@ -299,16 +385,15 @@ class WavesEngine {
     const t = this.ctx.currentTime;
     l.gain.gain.cancelScheduledValues(t);
     l.gain.gain.setValueAtTime(l.gain.gain.value, t);
-    l.gain.gain.linearRampToValueAtTime(0, t + 1.2);
+    l.gain.gain.linearRampToValueAtTime(0, t + 1.4);
     setTimeout(() => {
       try { l.src.stop(); } catch { /* */ }
       try { l.src.disconnect(); l.gain.disconnect(); l.pan.disconnect(); } catch { /* */ }
       this.layers.delete(id);
-    }, 1400);
+    }, 1600);
   }
 
   hasLayer(id: string) { return this.layers.has(id); }
 }
 
 export const wavesEngine = new WavesEngine();
-
