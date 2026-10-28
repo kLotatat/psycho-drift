@@ -10,7 +10,13 @@ import {
 } from "@/lib/data/sessions-repository";
 
 export const Route = createFileRoute("/session/$emotion")({
-  head: ({ params }) => {
+
+  loader: ({ params }) => {
+    const m = MODULES.find((x) => x.id === params.emotion);
+    if (!m) throw notFound();
+    return { module: m };
+  },
+    head: ({ params }) => {
     const m = MODULES.find((x) => x.id === params.emotion);
     return {
       meta: [
@@ -18,11 +24,6 @@ export const Route = createFileRoute("/session/$emotion")({
         { name: "description", content: m ? m.purpose : "A WAVES session." },
       ],
     };
-  },
-  loader: ({ params }) => {
-    const m = MODULES.find((x) => x.id === params.emotion);
-    if (!m) throw notFound();
-    return { module: m };
   },
   component: Session,
   notFoundComponent: () => (
