@@ -47,6 +47,12 @@ interface Chain {
   dry: GainNode;
   convolver: ConvolverNode;
   reverbInput: GainNode;
+  spatialNodes: {
+  pan: StereoPannerNode;
+  wetPan: StereoPannerNode;
+  wetSide: GainNode;
+  direction: number;
+}[];
   nodes: AudioNode[];
 }
 
@@ -144,6 +150,7 @@ limiter.connect(analyser).connect(this.ctx.destination);
     const p = PRESETS[module];
     const now = ctx.currentTime;
     const nodes: AudioNode[] = [];
+    const spatialNodes: Chain["spatialNodes"] = [];
 
     // Per-chain master + reverb send
     const master = ctx.createGain();
@@ -247,6 +254,12 @@ limiter.connect(analyser).connect(this.ctx.destination);
       g.connect(delay).connect(wetSide).connect(wetPan).connect(padBus);
       o.start();
       padOscs.push(o);
+      spatialNodes.push({
+  pan,
+  wetPan,
+  wetSide,
+  direction: ((i % 2) * 2 - 1) * 0.55,
+});
       nodes.push(g, pan, delay, wetSide, wetPan);
     });
 
@@ -293,7 +306,16 @@ limiter.connect(analyser).connect(this.ctx.destination);
                vibrato, vibratoGain, ...padOscs, padBus, noiseSrc, noiseBp, noiseGain,
                lp, convolver, wet, dry, reverbInput, master);
 
-    return { module, master, wet, dry, convolver, reverbInput, nodes };
+    return {
+  module,
+  master,
+  wet,
+  dry,
+  convolver,
+  reverbInput,
+  spatialNodes,
+  nodes,
+};
   }
 
   private destroyChain(chain: Chain, fadeSec = 0.8) {
@@ -327,14 +349,33 @@ limiter.connect(analyser).connect(this.ctx.destination);
     this.emit();
   }
 
-  setDepth(v: number) {
-    this.depth = Math.max(0, Math.min(1, v));
-    if (this.chain && this.ctx) {
-      const p = PRESETS[this.chain.module];
-      this.chain.wet.gain.linearRampToValueAtTime(p.reverb * this.depth, this.ctx.currentTime + 0.6);
+setDepth(v: number) {
+  this.depth = Math.max(0, Math.min(1, v));
+
+  if (this.chain && this.ctx) {
+    const now = this.ctx.currentTime;
+    const end = now + 0.6;
+    const p = PRESETS[this.chain.module];
+
+    const ramp = (param: AudioParam, target: number) => {
+      param.cancelScheduledValues(now);
+      param.setValueAtTime(param.value, now);
+      param.linearRampToValueAtTime(target, end);
+    };
+
+    // Preserve the existing reverb behaviour.
+    ramp(this.chain.wet.gain, p.reverb * this.depth);
+
+    // Update stereo width live.
+    for (const spatial of this.chain.spatialNodes) {
+      ramp(spatial.pan.pan, spatial.direction * this.depth);
+      ramp(spatial.wetPan.pan, -spatial.direction * this.depth);
+      ramp(spatial.wetSide.gain, 0.35 * this.depth);
     }
-    this.emit();
   }
+
+  this.emit();
+}
 
   setBinaural(on: boolean) {
     if (this.binauralOn === on) return;
