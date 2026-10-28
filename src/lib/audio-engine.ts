@@ -83,9 +83,8 @@ class WavesEngine {
       const analyser = this.ctx.createAnalyser();
       analyser.fftSize = 1024;
       analyser.smoothingTimeConstant = 0.85;
-      limiter.connect(analyser).connect(this.ctx.destination);
-      // Also send limiter directly to destination (analyser is a tap)
-      limiter.connect(this.ctx.destination);
+// Master output: limiter -> analyser -> speakers
+limiter.connect(analyser).connect(this.ctx.destination);
       this.limiter = limiter;
       this.analyser = analyser;
     }
