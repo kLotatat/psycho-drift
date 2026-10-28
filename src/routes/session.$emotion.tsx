@@ -4,6 +4,10 @@ import { Atmosphere } from "@/components/Atmosphere";
 import { MODULES } from "@/lib/waves-data";
 import { wavesEngine } from "@/lib/audio-engine";
 import { loadLayers, type Layer } from "@/lib/memory-store";
+import {
+  createSessionId,
+  startSession,
+} from "@/lib/data/sessions-repository";
 
 export const Route = createFileRoute("/session/$emotion")({
   head: ({ params }) => {
@@ -44,6 +48,8 @@ function Session() {
   const [binaural, setBinaural] = useState(true);
   const [adaptive, setAdaptive] = useState(true);
   const [started, setStarted] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState("");
   const [layers, setLayers] = useState<Layer[]>([]);
   const [activeLayerIds, setActiveLayerIds] = useState<Set<string>>(new Set());
   useEngine();
@@ -55,12 +61,34 @@ function Session() {
   }, [module.id]);
 
   const begin = async () => {
-    wavesEngine.setIntensity(intensity / 100);
-    wavesEngine.setDepth(depth / 100);
-    wavesEngine.setBinaural(binaural);
-    await wavesEngine.start(module.id);
-    setStarted(true);
-  };
+  setSessionError("");
+
+  wavesEngine.setIntensity(intensity / 100);
+  wavesEngine.setDepth(depth / 100);
+  wavesEngine.setBinaural(binaural);
+
+  await wavesEngine.start(module.id);
+
+  setStarted(true);
+
+  const id = createSessionId();
+
+  try {
+    await startSession({
+      id,
+      moduleId: module.id,
+      intensity,
+      spatialDepth: depth,
+      binaural,
+    });
+
+    setSessionId(id);
+  } catch {
+    setSessionError(
+      "Your audio is playing, but this session could not be saved to history.",
+    );
+  }
+};
 
   useEffect(() => () => {
     activeLayerIds.forEach((id) => wavesEngine.removeLayer(id));
@@ -111,9 +139,16 @@ function Session() {
         <div className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground text-center">
           <span className="text-foreground/90">{module.humanName}</span> · {module.freqLabel}
         </div>
-        <Link to="/reflect" className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground hover:text-foreground transition">
-          End & Reflect →
-        </Link>
+<Link
+  to="/reflect"
+  search={{
+    sessionId: sessionId ?? undefined,
+    durationSeconds: seconds,
+  }}
+  className="text-[11px] uppercase tracking-[0.32em] text-muted-foreground hover:text-foreground transition"
+>
+  End & Reflect →
+</Link>
       </header>
 
       <section className="relative min-h-dvh flex flex-col items-center justify-center px-6 pt-20 pb-48">
@@ -123,6 +158,11 @@ function Session() {
           <div className="mt-3 font-display text-5xl sm:text-6xl text-foreground/95">{module.humanName}</div>
           <div className="mt-4 font-mono text-sm text-foreground/70">{mm}:{ss}</div>
           <p className="mt-8 max-w-md mx-auto text-sm text-muted-foreground leading-relaxed">{module.purpose}</p>
+          {sessionError && (
+  <p role="alert" className="mt-4 text-sm text-red-300">
+    {sessionError}
+  </p>
+)}
         </div>
 
         {!started && (
