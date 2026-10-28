@@ -44,6 +44,7 @@ interface Chain {
   module: ModuleId;
   master: GainNode;
   wet: GainNode;
+  dry: GainNode;
   convolver: ConvolverNode;
   reverbInput: GainNode;
   nodes: AudioNode[];
@@ -292,7 +293,7 @@ limiter.connect(analyser).connect(this.ctx.destination);
                vibrato, vibratoGain, ...padOscs, padBus, noiseSrc, noiseBp, noiseGain,
                lp, convolver, wet, dry, reverbInput, master);
 
-    return { module, master, wet, convolver, reverbInput, nodes };
+    return { module, master, wet, dry, convolver, reverbInput, nodes };
   }
 
   private destroyChain(chain: Chain, fadeSec = 0.8) {
@@ -354,12 +355,17 @@ limiter.connect(analyser).connect(this.ctx.destination);
 private routeLayersToActiveChain() {
   if (!this.ctx) return;
 
-  const destination: AudioNode =
-    this.chain?.reverbInput ?? this.limiter ?? this.ctx.destination;
-
   for (const { gain } of this.layers.values()) {
     gain.disconnect();
-    gain.connect(destination);
+
+    if (this.chain) {
+      // Preserve the original audio and add the reverb path.
+      gain.connect(this.chain.dry);
+      gain.connect(this.chain.reverbInput);
+    } else {
+      // No active sound space: output the audio dry.
+      gain.connect(this.limiter ?? this.ctx.destination);
+    }
   }
 }
   async addLayer(id: string, dataUrl: string, initialGain = 0.5) {
@@ -375,12 +381,20 @@ private routeLayersToActiveChain() {
       gain.gain.value = 0;
       const pan = ctx.createStereoPanner();
       pan.pan.value = 0;
-      // Route layers through the chain's reverb when available, else dry to limiter
-      const destination: AudioNode = this.chain?.reverbInput ?? this.limiter ?? ctx.destination;
-      src.connect(pan).connect(gain).connect(destination);
-      gain.gain.linearRampToValueAtTime(initialGain, ctx.currentTime + 2.0);
-      src.start();
-      this.layers.set(id, { src, gain, pan });
+// Connect the source to its gain node.
+src.connect(pan).connect(gain);
+
+gain.gain.linearRampToValueAtTime(
+  initialGain,
+  ctx.currentTime + 2.0
+);
+
+this.layers.set(id, { src, gain, pan });
+
+// Route through both dry and wet paths.
+this.routeLayersToActiveChain();
+
+src.start();
     } catch (e) {
       console.warn("WAVES: failed to decode layer", id, e);
     }
