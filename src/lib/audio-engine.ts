@@ -131,6 +131,7 @@ limiter.connect(analyser).connect(this.ctx.destination);
     const previous = this.chain;
     const next = this.spinUp(module);
     this.chain = next;
+    this.routeLayersToActiveChain();
     // Crossfade — new chain ramps up while old fades out
     if (previous) this.destroyChain(previous, 1.6);
     this.emit();
@@ -342,6 +343,7 @@ limiter.connect(analyser).connect(this.ctx.destination);
       const m = this.chain.module;
       const prev = this.chain;
       this.chain = this.spinUp(m);
+      this.routeLayersToActiveChain();
       this.destroyChain(prev, 1.2);
     }
     this.emit();
@@ -349,7 +351,17 @@ limiter.connect(analyser).connect(this.ctx.destination);
 
   // ——— Personal layers (user-uploaded sounds) ———
   private layers = new Map<string, { src: AudioBufferSourceNode; gain: GainNode; pan: StereoPannerNode }>();
+private routeLayersToActiveChain() {
+  if (!this.ctx) return;
 
+  const destination: AudioNode =
+    this.chain?.reverbInput ?? this.limiter ?? this.ctx.destination;
+
+  for (const { gain } of this.layers.values()) {
+    gain.disconnect();
+    gain.connect(destination);
+  }
+}
   async addLayer(id: string, dataUrl: string, initialGain = 0.5) {
     const ctx = this.ensureCtx();
     if (this.layers.has(id)) return;
